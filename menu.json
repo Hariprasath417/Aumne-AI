@@ -24,7 +24,14 @@
     "id": 4,
     "name": "Garlic Bread",
     "description": "Crispy garlic bread",
-    "price": 99.0,
+    "price": 120.0,
+    "is_available": true
+  },
+  {
+    "id": 5,
+    "name": "Poori",
+    "description": "Hari",
+    "price": 180.0,
     "is_available": true
   }
 ]

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import json_handler
 import whatsapp_service
@@ -13,6 +14,15 @@ app = FastAPI(
     title="Food Ordering System API",
     description="Backend for WhatsApp-based food ordering system",
     version="1.0.0"
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ==================== MENU ENDPOINTS ====================
