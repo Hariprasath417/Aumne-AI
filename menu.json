@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "name": "Margherita Pizza",
+    "description": "Classic cheese pizza",
+    "price": 299.0,
+    "is_available": true
+  },
+  {
+    "id": 2,
+    "name": "Pepperoni Pizza",
+    "description": "Spicy pepperoni pizza",
+    "price": 349.0,
+    "is_available": true
+  },
+  {
+    "id": 3,
+    "name": "Coke",
+    "description": "Cold beverage",
+    "price": 50.0,
+    "is_available": true
+  },
+  {
+    "id": 4,
+    "name": "Garlic Bread",
+    "description": "Crispy garlic bread",
+    "price": 99.0,
+    "is_available": true
+  }
+]
