@@ -1,10 +1,13 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional
-import json_handler
+from typing import List
+from sqlalchemy.orm import Session
+import db_handler
 import whatsapp_service
 import conversation_handler
+import message_formatter
+from database import init_db, initialize_sample_data, get_db
 from models import (
     MenuItem, MenuItemCreate, MenuItemUpdate,
     Order, OrderCreate, OrderStatusUpdate
@@ -12,23 +15,23 @@ from models import (
 
 app = FastAPI(
     title="Food Ordering System API",
-    description="Backend for WhatsApp-based food ordering system",
-    version="1.0.0"
+    description="Backend for WhatsApp-based food ordering system with SQLite database",
+    version="2.0.0"
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=["*"],  # Allows all origins - for development
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
 # ==================== MENU ENDPOINTS ====================
 
 @app.post("/menu/", response_model=MenuItem, tags=["Menu"])
-def create_menu_item(item: MenuItemCreate):
+def create_menu_item(item: MenuItemCreate, db: Session = Depends(get_db)):
     """
     Create a new menu item
     
@@ -38,32 +41,33 @@ def create_menu_item(item: MenuItemCreate):
     - **is_available**: Availability status (default: true)
     """
     menu_item = MenuItem(id=0, **item.model_dump())
-    created_item = json_handler.add_menu_item(menu_item)
+    created_item = db_handler.add_menu_item(db, menu_item)
     return created_item
 
 @app.get("/menu/", response_model=List[MenuItem], tags=["Menu"])
-def get_all_menu_items():
+def get_all_menu_items(db: Session = Depends(get_db)):
     """
     Retrieve all menu items
     """
-    return json_handler.read_menu()
+    return db_handler.read_menu(db)
 
 @app.get("/menu/{item_id}", response_model=MenuItem, tags=["Menu"])
-def get_menu_item(item_id: int):
+def get_menu_item(item_id: int, db: Session = Depends(get_db)):
     """
     Retrieve a specific menu item by ID
     """
-    item = json_handler.get_menu_item(item_id)
+    item = db_handler.get_menu_item(db, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return item
 
 @app.patch("/menu/{item_id}", response_model=MenuItem, tags=["Menu"])
-def update_menu_item(item_id: int, updates: MenuItemUpdate):
+def update_menu_item(item_id: int, updates: MenuItemUpdate, db: Session = Depends(get_db)):
     """
     Update a menu item (e.g., change availability, price)
     """
-    updated_item = json_handler.update_menu_item(
+    updated_item = db_handler.update_menu_item(
+        db,
         item_id,
         updates.model_dump(exclude_unset=True)
     )
@@ -74,7 +78,7 @@ def update_menu_item(item_id: int, updates: MenuItemUpdate):
 # ==================== ORDER ENDPOINTS ====================
 
 @app.post("/orders/", response_model=Order, tags=["Orders"])
-def create_order(order: OrderCreate):
+def create_order(order: OrderCreate, db: Session = Depends(get_db)):
     """
     Create a new order (staff-facing endpoint)
     
@@ -103,10 +107,10 @@ def create_order(order: OrderCreate):
         created_at=""
     )
     
-    created_order = json_handler.add_order(new_order)
+    created_order = db_handler.add_order(db, new_order)
     
     # Send WhatsApp confirmation
-    items_summary = conversation_handler.message_formatter.format_items_summary(order.items)
+    items_summary = message_formatter.format_items_summary(order.items)
     whatsapp_service.send_order_confirmation(
         order.customer_whatsapp,
         created_order.id,
@@ -117,24 +121,24 @@ def create_order(order: OrderCreate):
     return created_order
 
 @app.get("/orders/", response_model=List[Order], tags=["Orders"])
-def get_all_orders():
+def get_all_orders(db: Session = Depends(get_db)):
     """
     Retrieve all orders
     """
-    return json_handler.read_orders()
+    return db_handler.read_orders(db)
 
 @app.get("/orders/{order_id}", response_model=Order, tags=["Orders"])
-def get_order(order_id: int):
+def get_order(order_id: int, db: Session = Depends(get_db)):
     """
     Retrieve a specific order by ID
     """
-    order = json_handler.get_order(order_id)
+    order = db_handler.get_order(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
 
 @app.patch("/orders/{order_id}", response_model=Order, tags=["Orders"])
-def update_order_status(order_id: int, status_update: OrderStatusUpdate):
+def update_order_status(order_id: int, status_update: OrderStatusUpdate, db: Session = Depends(get_db)):
     """
     Update order status and send WhatsApp notification
     
@@ -154,12 +158,12 @@ def update_order_status(order_id: int, status_update: OrderStatusUpdate):
         )
     
     # Get order first
-    order = json_handler.get_order(order_id)
+    order = db_handler.get_order(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Update status
-    updated_order = json_handler.update_order_status(order_id, status_update.status)
+    updated_order = db_handler.update_order_status(db, order_id, status_update.status)
     
     # Send WhatsApp notification
     whatsapp_service.send_order_status_update(
@@ -171,11 +175,11 @@ def update_order_status(order_id: int, status_update: OrderStatusUpdate):
     return updated_order
 
 @app.delete("/orders/{order_id}", tags=["Orders"])
-def cancel_order(order_id: int):
+def cancel_order(order_id: int, db: Session = Depends(get_db)):
     """
     Cancel an order and send WhatsApp notification
     """
-    order = json_handler.get_order(order_id)
+    order = db_handler.get_order(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -186,7 +190,7 @@ def cancel_order(order_id: int):
         )
     
     # Cancel order
-    cancelled_order = json_handler.cancel_order(order_id)
+    cancelled_order = db_handler.cancel_order(db, order_id)
     
     # Send WhatsApp notification
     whatsapp_service.send_order_cancellation(order.customer_whatsapp, order_id)
@@ -223,6 +227,8 @@ async def whatsapp_webhook(request: Request):
     
     except Exception as e:
         print(f"❌ Error processing webhook: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse(
             content={"status": "error", "message": str(e)},
             status_code=500
@@ -238,18 +244,21 @@ def root():
     return {
         "status": "online",
         "service": "Food Ordering System API",
-        "version": "1.0.0"
+        "version": "2.0.0",
+        "database": "SQLite"
     }
 
 # ==================== STARTUP EVENT ====================
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize JSON files on startup"""
-    json_handler.initialize_files()
+    """Initialize database on startup"""
+    init_db()
+    initialize_sample_data()
     print("✅ Food Ordering System API started successfully!")
     print("📝 Access API docs at: http://localhost:8000/docs")
     print("📋 OpenAPI spec at: http://localhost:8000/openapi.json")
+    print("💾 Database: SQLite (food_ordering.db)")
 
 if __name__ == "__main__":
     import uvicorn

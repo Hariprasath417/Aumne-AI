@@ -1,6 +1,6 @@
 from typing import List
 from models import MenuItem, Order, OrderItem
-import json_handler
+import db_handler
 
 def format_main_menu() -> str:
     """Format the main menu message"""

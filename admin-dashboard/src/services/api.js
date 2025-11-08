@@ -1,4 +1,6 @@
+// const API_BASE_URL = 'http://172.20.10.4:8000';
 const API_BASE_URL = 'http://localhost:8000';
+
 
 // Menu API
 export const menuAPI = {
