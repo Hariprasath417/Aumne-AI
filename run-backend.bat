@@ -8,7 +8,7 @@ echo === Starting FastAPI Backend ===
 echo.
 
 REM Check if virtual environment exists
-if not exist venv (
+if not exist Environment (
     echo [ERROR] Virtual environment not found. Please run setup.bat first.
     pause
     exit /b 1

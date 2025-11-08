@@ -37,7 +37,7 @@ echo.
 
 REM Create virtual environment
 echo Creating Python virtual environment...
-if exist venv (
+if exist Environment (
     echo Virtual environment already exists, skipping...
 ) else (
     python -m venv Environment

@@ -8,12 +8,12 @@ echo === Generating Python SDK from OpenAPI Spec ===
 echo.
 
 REM Activate virtual environment
-if not exist venv (
+if not exist Environment (
     echo [ERROR] Virtual environment not found. Please run setup.bat first.
     pause
     exit /b 1
 )
-call venv\Scripts\activate.bat
+call Environment\Scripts\activate.bat
 
 REM Check if backend is running
 echo Checking if FastAPI backend is running...
@@ -22,7 +22,7 @@ if %errorlevel% neq 0 (
     echo [ERROR] Backend is not running. Please start it first with run.bat
     echo.
     echo Alternative: Start backend manually:
-    echo   venv\Scripts\activate
+    echo   Environment\Scripts\activate
     echo   python -m uvicorn main:app --reload
     pause
     exit /b 1
